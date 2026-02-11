@@ -325,12 +325,19 @@ class Fetcher(BaseFetcher):
             return DataResponse(rows=[], error="No pods found matching the filters")
 
         logger.info(
-            "Fetching logs: contexts=%d, namespaces=%d, pods=%d",
+            "Fetching logs: contexts=%d (%s), namespaces=%d, pods=%d",
             len(helper.contexts),
+            ", ".join(helper.contexts),
             total_namespaces,
             total_pods,
         )
 
+        if total_pods > 0:
+            for ctx, ns_pods in helper.pods.items():
+                for ns, pods in ns_pods.items():
+                    if pods:
+                        logger.info("Context %s, Namespace %s has %d pods", ctx, ns, len(pods))
+        
         log_entries, log_errors = helper.get_logs(
             since_seconds, time_from_dt, time_to_dt
         )

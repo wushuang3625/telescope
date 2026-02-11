@@ -72,7 +72,17 @@ class KubeConfigHelper:
                 self.data = yaml.safe_load(fd)
         else:
             self.data = yaml.safe_load(kubeconfig)
+        
+        # Try multiple ways to get current-context
+        self.current_context = self.data.get("current-context")
+        if not self.current_context and "current_context" in self.data:
+            self.current_context = self.data.get("current_context")
+            
         self.loader = KubeConfigLoader(config_dict=self.data)
+        if not self.current_context:
+            self.current_context = self.loader.current_context
+            
+        logger.debug("KubeConfigHelper initialized with current_context: %s", self.current_context)
 
     def list_contexts(self) -> List[Dict]:
         result = []
@@ -136,7 +146,14 @@ class KubeClientHelper:
                 config_file=config_path, context=context_name
             )
             cfg = kubernetes_client.Configuration.get_default_copy()
+            # Set timeout on the configuration object. 
+            # In some versions of the client, this is used by ApiClient.
+            cfg.timeout = 5 
             api_client = kubernetes_client.ApiClient(cfg)
+            # Also set it directly on the api_client if possible
+            if hasattr(api_client, 'request_timeout'):
+                api_client.request_timeout = (5, 10)
+            
             apps = kubernetes_client.AppsV1Api(api_client)
             core = kubernetes_client.CoreV1Api(api_client)
             client = KubeClient(core, apps)
@@ -274,11 +291,28 @@ class KubeHelper:
 
     @property
     def contexts(self) -> Set[str]:
-        if self.selected_contexts and not self._validation_called:
-            raise ValueError(
-                "validation should be called when specific contexts are selected"
-            )
-        return self.selected_contexts or self.allowed_contexts_set
+        if self.selected_contexts:
+            if not self._validation_called:
+                raise ValueError(
+                    "validation should be called when specific contexts are selected"
+                )
+            return self.selected_contexts
+
+        # If no contexts are explicitly selected, prefer the current-context from kubeconfig
+        if self.config.current_context:
+            for ctx in self.allowed_contexts:
+                if ctx["name"] == self.config.current_context:
+                    logger.debug("Using current_context: %s", self.config.current_context)
+                    return {self.config.current_context}
+
+        # If we have multiple contexts and no current-context/filter, 
+        # return ONLY the first one to avoid mass connection timeouts
+        if not self.context_flyql_filter and self.allowed_contexts_set:
+            first_ctx = self.allowed_contexts[0]["name"]
+            logger.debug("No current_context or filter, falling back to first context: %s", first_ctx)
+            return {first_ctx}
+
+        return self.allowed_contexts_set
 
     def _get_all_namespaces(self) -> Dict[str, List[str]]:
         cached = cache.get(self.namespaces_cache_key)
@@ -310,13 +344,10 @@ class KubeHelper:
         self.errors.append({"operation": operation, "sev": sev, "data": data})
 
     def get_namespaces(self) -> Tuple[Dict[str, T], Dict[str, Exception]]:
-        contexts_to_use = (
-            self.contexts if self.selected_contexts else self.allowed_contexts_set
-        )
         return self.execute_parallel(
             self.get_namespaces_from_client,
             max_workers=50,
-            contexts=contexts_to_use,
+            contexts=self.contexts,
         )
 
     def get_namespaces_from_client(self, client: KubeClient) -> List[str]:
@@ -369,9 +400,7 @@ class KubeHelper:
             client = self.client_helper.get_client_for_context(context_name)
             return self._get_pods_for_namespaces(client, namespaces)
 
-        contexts_to_fetch = (
-            self.contexts if self.selected_contexts else set(all_namespaces.keys())
-        )
+        contexts_to_fetch = self.contexts
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_context = {
@@ -612,15 +641,44 @@ class KubeHelper:
             log_params["tail_lines"] = tail_lines
 
         try:
-            raw_logs = client.core.read_namespaced_pod_log(**log_params)
+            try:
+                raw_logs = client.core.read_namespaced_pod_log(**log_params)
+            except Exception as e:
+                # If container is terminated, try fetching previous logs if it's a 400 error
+                if hasattr(e, 'status') and e.status == 400 and "terminated" in str(e).lower():
+                    log_params["previous"] = True
+                    try:
+                        raw_logs = client.core.read_namespaced_pod_log(**log_params)
+                    except Exception:
+                        # If still failing, it's likely no logs are available
+                        return entries
+                else:
+                    raise e
+
             if not raw_logs and status in ("Succeeded", "Failed", "Error"):
                 log_params["previous"] = True
-                raw_logs = client.core.read_namespaced_pod_log(**log_params)
+                try:
+                    raw_logs = client.core.read_namespaced_pod_log(**log_params)
+                except Exception:
+                    return entries
 
             if not raw_logs:
                 return entries
 
-            for line in raw_logs.splitlines():
+            lines = raw_logs.splitlines()
+            total_lines = len(lines)
+            filtered_by_ts = 0
+            
+            if total_lines > 0:
+                first_line = lines[0]
+                last_line = lines[-1]
+                # logger.debug(
+                #     "Pod %s/%s/%s: Raw logs sample - First: %s, Last: %s",
+                #     context_name, namespace, pod_name,
+                #     first_line[:50], last_line[:50]
+                # )
+            
+            for line in lines:
                 if not line:
                     continue
 
@@ -630,26 +688,36 @@ class KubeHelper:
                     continue
 
                 if ts < time_from or ts > time_to:
+                    filtered_by_ts += 1
                     continue
 
                 message = parts[1] if len(parts) > 1 else ""
                 message = ANSI_ESCAPE.sub("", message)
-
-                if message:
-                    entries.append(
-                        LogEntry(
-                            context=context_name,
-                            namespace=namespace,
-                            pod=pod_name,
-                            container=container,
-                            timestamp=ts,
-                            message=message,
-                            node=node,
-                            labels=labels,
-                            annotations=annotations,
-                            status=status,
-                        )
+                
+                entries.append(
+                    LogEntry(
+                        timestamp=ts,
+                        context=context_name,
+                        namespace=namespace,
+                        pod=pod_name,
+                        container=container,
+                        node=node,
+                        labels=labels,
+                        annotations=annotations,
+                        message=message,
+                        status=status,
                     )
+                )
+
+            if total_lines > 0:
+                logger.debug(
+                    "Pod %s/%s/%s: fetched %d lines, %d kept, %d filtered by time range (%s to %s)",
+                    context_name, namespace, pod_name,
+                    total_lines, len(entries), filtered_by_ts,
+                    time_from.isoformat(), time_to.isoformat()
+                )
+            
+            return entries
 
         except Exception as e:
             logger.error(
@@ -666,23 +734,46 @@ class KubeHelper:
     @staticmethod
     def _parse_k8s_timestamp(timestamp_str: str) -> Optional[datetime]:
         try:
-            from telescope.constants import UTC_ZONE
-
-            year = int(timestamp_str[0:4])
-            month = int(timestamp_str[5:7])
-            day = int(timestamp_str[8:10])
-            hour = int(timestamp_str[11:13])
-            minute = int(timestamp_str[14:16])
-            second = int(timestamp_str[17:19])
-
-            if len(timestamp_str) > 19 and timestamp_str[19] == ".":
-                frac_raw = timestamp_str[20:-1]
-                micros = int((frac_raw[:6]).ljust(6, "0"))
-            else:
-                micros = 0
-
-            return datetime(year, month, day, hour, minute, second, micros, UTC_ZONE)
-        except (ValueError, AttributeError, IndexError):
+            # Kubernetes timestamps can be:
+            # 1. UTC: 2026-02-11T06:18:07.123456789Z
+            # 2. With offset: 2026-02-11T14:18:07.123456789+08:00
+            
+            # Use dateutil if available, otherwise fall back to manual parsing
+            try:
+                from dateutil import parser
+                dt = parser.isoparse(timestamp_str)
+                # Ensure it's in UTC for comparison
+                from telescope.constants import UTC_ZONE
+                return dt.astimezone(UTC_ZONE)
+            except ImportError:
+                from telescope.constants import UTC_ZONE
+                
+                # Manual parsing for common K8s formats
+                # 2026-02-11T14:18:02.219510151+08:00
+                t_parts = re.split(r'[TZ+-]', timestamp_str)
+                year = int(t_parts[0])
+                month = int(t_parts[1])
+                day = int(t_parts[2])
+                hour = int(t_parts[3])
+                minute = int(t_parts[4])
+                second = int(t_parts[5][:2])
+                
+                dt = datetime(year, month, day, hour, minute, second, 0, UTC_ZONE)
+                
+                # Adjust for offset if present
+                if '+' in timestamp_str or '-' in timestamp_str:
+                    offset_str = re.search(r'[+-]\d{2}:?\d{2}$', timestamp_str)
+                    if offset_str:
+                        offset_str = offset_str.group().replace(':', '')
+                        sign = 1 if offset_str[0] == '+' else -1
+                        hours = int(offset_str[1:3])
+                        minutes = int(offset_str[3:5])
+                        from datetime import timedelta
+                        dt = dt - timedelta(hours=sign*hours, minutes=sign*minutes)
+                
+                return dt
+        except (ValueError, AttributeError, IndexError, Exception) as e:
+            logger.error("Error parsing timestamp %s: %s", timestamp_str, e)
             return None
 
     def get_deployments(self) -> List[Dict]:
@@ -750,10 +841,24 @@ class KubeHelper:
         return deployments
 
     def test_connection(self) -> bool:
+        """
+        Tests the connection to the Kubernetes cluster.
+        If a current-context is specified in the kubeconfig and it's allowed, it uses that.
+        Otherwise, it falls back to the first allowed context.
+        """
         if not self.allowed_contexts:
             raise KubeHelperError("No contexts available")
 
-        first_context = self.allowed_contexts[0]["name"]
-        client = self.client_helper.get_client_for_context(first_context)
+        context_to_test = None
+        if self.config.current_context:
+            for ctx in self.allowed_contexts:
+                if ctx["name"] == self.config.current_context:
+                    context_to_test = ctx["name"]
+                    break
+
+        if not context_to_test:
+            context_to_test = self.allowed_contexts[0]["name"]
+
+        client = self.client_helper.get_client_for_context(context_to_test)
         client.core.list_namespace()
         return True

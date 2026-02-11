@@ -63,7 +63,7 @@
                 />
                 <ErrorText :text="connectionFieldErrors.context_filter" />
                 <small class="text-gray-600 mt-1 block">
-                    Optional FlyQL query to filter available contexts from kubeconfig. Leave empty to use all contexts.
+                    Optional FlyQL query to filter available contexts from kubeconfig. If empty, uses the current-context if set, otherwise uses all contexts.
                     Available columns: name, cluster, user, namespace
                 </small>
             </div>
@@ -134,11 +134,28 @@ const resetErrors = () => {
 }
 
 const generateHash = async (text) => {
-    const encoder = new TextEncoder()
-    const data = encoder.encode(text)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+    try {
+        if (crypto && crypto.subtle) {
+            const encoder = new TextEncoder()
+            const data = encoder.encode(text)
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+            const hashArray = Array.from(new Uint8Array(hashBuffer))
+            return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+        }
+    } catch (e) {
+        console.warn('Crypto API not available or failed, using fallback hash', e)
+    }
+
+    // Fallback simple hash for non-secure contexts
+    let hash = 0
+    if (text.length === 0) return ''
+    for (let i = 0; i < text.length; i++) {
+        const char = text.charCodeAt(i)
+        hash = (hash << 5) - hash + char
+        hash = hash & hash // Convert to 32bit integer
+    }
+    // Pad to resemble a long hash, though not secure
+    return (hash >>> 0).toString(16).padStart(64, '0')
 }
 
 const updateHash = async () => {
