@@ -5,4 +5,5 @@ backend/telescope/templates/index.html
 .envrc
 .DS_Store
 .idea
-**.sqlite3
+sqlite3
+dev

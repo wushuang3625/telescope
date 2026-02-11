@@ -19,8 +19,16 @@ if settings.CONFIG["auth"]["providers"]["okta"]["enabled"]:
 
 urlpatterns = [
     path(
+        "favicon.ico",
+        RedirectView.as_view(url=f"{settings.BASE_URL}/static/favicon.ico"),
+    ),
+    path(
         "editor.worker.js",
         RedirectView.as_view(url=f"{settings.BASE_URL}/static/editor.worker.js"),
+    ),
+    path(
+        "json.worker.js",
+        RedirectView.as_view(url=f"{settings.BASE_URL}/static/json.worker.js"),
     ),
     path("login/", include(oauth_patterns)),
     path("", include("telescope.urls")),

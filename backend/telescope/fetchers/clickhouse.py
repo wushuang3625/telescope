@@ -170,7 +170,7 @@ class Fetcher(BaseFetcher):
             return False, err.message
         else:
             try:
-                to_sql(parser.root, fields=flyql_clickhouse_columns(source._columns))
+                to_sql(parser.root, columns=flyql_clickhouse_columns(source._columns))
             except FlyqlError as err:
                 return False, err.message
 
@@ -266,12 +266,12 @@ class Fetcher(BaseFetcher):
         if request.query:
             parser = parse(request.query)
             filter_clause = to_sql(
-                parser.root, fields=flyql_clickhouse_columns(request.source._columns)
+                parser.root, columns=flyql_clickhouse_columns(request.source._columns)
             )
         else:
-            filter_clause = "true"
+            filter_clause = "1 = 1"
 
-        raw_where_clause = request.raw_query or "true"
+        raw_where_clause = request.raw_query or "1 = 1"
 
         group_by_value = ""
         group_by = request.group_by[0] if request.group_by else None
@@ -401,13 +401,13 @@ class Fetcher(BaseFetcher):
         if request.query:
             parser = parse(request.query)
             filter_clause = to_sql(
-                parser.root, fields=flyql_clickhouse_columns(request.source._columns)
+                parser.root, columns=flyql_clickhouse_columns(request.source._columns)
             )
         else:
-            filter_clause = "true"
+            filter_clause = "1 = 1"
 
         order_by_clause = f"ORDER BY {request.source.time_column} DESC"
-        raw_where_clause = request.raw_query or "true"
+        raw_where_clause = request.raw_query or "1 = 1"
 
         time_clause = build_time_clause(
             request.source.time_column,

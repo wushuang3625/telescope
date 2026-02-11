@@ -24,6 +24,7 @@ urlpatterns = [
     path("api/v1/sources/<slug:slug>", source_api.SourceView.as_view()),
     path("api/v1/sources/<slug:slug>/", source_api.SourceView.as_view()),
     path("ui/v1/config", index.ConfigView.as_view()),
+    path("ui/v1/auth/login", auth.APILoginView.as_view()),
     path("ui/v1/auth/whoami", auth.WhoAmIView.as_view()),
     path("ui/v1/auth/api_tokens", auth.UserAPITokenView.as_view()),
     path("ui/v1/auth/api_tokens/delete", auth.UserAPITokensDeleteView.as_view()),

@@ -26,6 +26,7 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
     const _graphGroupBy = ref(null)
     const _showGraph = ref(null)
     const _limit = ref(null)
+    const _maxLines = ref(null)
     const _contextColumns = ref(null)
     const _view = ref(null)
 
@@ -39,6 +40,7 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         _graphGroupBy.value = null
         _showGraph.value = null
         _limit.value = null
+        _maxLines.value = null
         _contextColumns.value = null
         _view.value = null
     }
@@ -51,13 +53,14 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         }
         _columns.value = route.query.columns ?? viewParam?.data?.columns ?? source.defaultChosenColumns.join(', ')
         _query.value = route.query.query ?? viewParam?.data?.query ?? ''
-        _rawQuery.value = route.query.raw_query ?? ''
+        _rawQuery.value = route.query.raw_query ?? viewParam?.data?.raw_query ?? ''
         _from.value = tryToMillis(route.query.from ?? viewParam?.data?.from ?? 'now-5m')
         _to.value = tryToMillis(route.query.to ?? viewParam?.data?.to ?? 'now')
         _timeZone.value = route.query.timeZone ?? viewParam?.data?.timeZone ?? localTimeZone
         _graphGroupBy.value = route.query.graph_group_by ?? viewParam?.data?.graph_group_by ?? source.severityColumn
         _showGraph.value = true
         _limit.value = 50
+        _maxLines.value = 0
         _contextColumns.value = {}
         _view.value = viewParam
 
@@ -77,6 +80,16 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         } else if (viewParam?.data?.limit) {
             _limit.value = viewParam.data.limit
         }
+
+        if (route.query.max_lines) {
+            let intMaxLines = parseInt(route.query.max_lines)
+            if (!isNaN(intMaxLines)) {
+                _maxLines.value = intMaxLines
+            }
+        } else if (viewParam?.data?.max_lines) {
+            _maxLines.value = viewParam.data.max_lines
+        }
+
         for (const [key, value] of Object.entries(route.query)) {
             if (key.startsWith('ctx')) {
                 let column = key.slice(4)
@@ -132,6 +145,10 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         return _limit.value
     })
 
+    const maxLines = computed(() => {
+        return _maxLines.value
+    })
+
     const graphGroupBy = computed(() => {
         return _graphGroupBy.value
     })
@@ -148,6 +165,7 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         let params = {
             columns: columns.value,
             limit: limit.value,
+            max_lines: maxLines.value,
             from: from.value,
             to: to.value,
             timeZone: timeZone.value,
@@ -209,10 +227,12 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         return {
             columns: columns.value,
             query: query.value,
+            raw_query: rawQuery.value,
             from: from.value,
             to: to.value,
             timeZone: timeZone.value,
             limit: limit.value,
+            max_lines: maxLines.value,
             graph_group_by: graphGroupBy.value,
             show_graph: showGraph.value,
             context_columns: contextColumns.value,
@@ -227,9 +247,11 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         _view.value = value
         setFields(value.data.columns)
         setQuery(value.data.query)
+        setRawQuery(value.data.raw_query)
         setFrom(value.data.from)
         setTo(value.data.to)
         setLimit(value.data.limit)
+        setMaxLines(value.data.max_lines)
         setGraphGroupBy(value.data.graph_group_by)
         setShowGraph(value.data.show_graph)
         setContextColumns(value.data.context_columns)
@@ -258,6 +280,17 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
 
     function setLimit(value) {
         _limit.value = value
+    }
+
+    function setMaxLines(value) {
+        if (value === undefined || value === null) {
+            _maxLines.value = 0
+            return
+        }
+        let intValue = parseInt(value)
+        if (!isNaN(intValue)) {
+            _maxLines.value = intValue
+        }
     }
 
     function setFrom(value) {
@@ -317,6 +350,7 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         setRawQuery,
         addQueryExpression,
         setLimit,
+        setMaxLines,
         setFrom,
         setTo,
         setTimeZone,
@@ -328,6 +362,7 @@ export const useSourceControlsStore = defineStore('sourceDataControls', () => {
         view,
         timeZone,
         limit,
+        maxLines,
         columns,
         query,
         rawQuery,

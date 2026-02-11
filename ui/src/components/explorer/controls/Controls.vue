@@ -198,6 +198,9 @@ const onGraphVisibilityChanged = () => {
 
 const onSavedViewChanged = (view) => {
     sourceControlsStore.setView(view)
+    if (sourceControlsStore.rawQuery) {
+        showRawQueryEditor.value = true
+    }
 }
 
 const handleSearch = () => {

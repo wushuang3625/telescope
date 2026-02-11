@@ -59,11 +59,14 @@
                             v-if="containsHtmlModifiers(column)"
                             :class="{ 'whitespace-pre-wrap break-all': getRowValueLength(column, row.data) > 50 }"
                             v-html="getRowValue(column, row.data)"
+                            :style="cellStyle"
                         />
                         <pre
                             v-else
                             :class="{ 'whitespace-pre-wrap break-all': getRowValueLength(column, row.data) > 50 }"
-                            >{{ getRowValue(column, row.data) || '&dash;' }}</pre
+                            :style="cellStyle"
+                            v-html="getHighlightedValue(column, row.data)"
+                        ></pre
                         >
                     </td>
                 </tr>
@@ -87,11 +90,27 @@ import { getColor } from '@/utils/colors.js'
 import { MODIFIERS } from '@/utils/modifiers.js'
 import { DateTime } from 'luxon'
 
+import { useSourceControlsStore } from '@/stores/sourceControls'
+import { useHighlight } from '@/composables/useHighlight.js'
+
 const props = defineProps(['source', 'rows', 'columns', 'timeZone'])
 const selectedRow = ref(null)
 const visible = ref(false)
+const sourceControlsStore = useSourceControlsStore()
+const { getHighlightedValue: getHighlightedString } = useHighlight()
 
 const showMicroseconds = computed(() => props.rows.some((row) => row.time.microseconds !== 0))
+
+
+const cellStyle = computed(() => {
+    if (sourceControlsStore.maxLines > 0) {
+        return {
+            'max-height': `${sourceControlsStore.maxLines * 20}px`,
+            'overflow-y': 'auto',
+        }
+    }
+    return {}
+})
 
 const dateFormat = computed(() => {
     const dateTimes = props.rows.map((r) => DateTime.fromMillis(r.time.unixtime, { zone: props.timeZone }))
@@ -199,5 +218,10 @@ const extractJsonPath = (column, data) => {
         }
     }
     return value
+}
+
+const getHighlightedValue = (field, data) => {
+    let value = getRowValue(field, data)
+    return getHighlightedString(value)
 }
 </script>

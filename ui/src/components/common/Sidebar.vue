@@ -84,11 +84,11 @@
                 Sources
             </router-link>
 
-            <div v-if="user.hasAccessToSettings()" class="pl-4 py-3 text-base font-semibold text-gray-300 mt-4">
+            <div v-if="user && user.hasAccessToSettings()" class="pl-4 py-3 text-base font-semibold text-gray-300 mt-4">
                 Administration
             </div>
             <router-link
-                v-if="user.hasAccessToSettings()"
+                v-if="user && user.hasAccessToSettings()"
                 to="/rbac/users"
                 class="flex items-center ml-2 mr-3 px-3 py-2 mb-2 text-base rounded text-gray-300 hover:bg-white hover:bg-opacity-30"
                 :class="{ 'bg-black bg-opacity-30': $route.name === 'rbacUsers' }"
@@ -97,7 +97,7 @@
                 Users
             </router-link>
             <router-link
-                v-if="user.hasAccessToSettings()"
+                v-if="user && user.hasAccessToSettings()"
                 to="/rbac/groups"
                 class="flex items-center ml-2 mr-3 px-3 py-2 mb-2 text-base rounded text-gray-300 hover:bg-white hover:bg-opacity-30"
                 :class="{ 'bg-black bg-opacity-30': $route.name?.startsWith('rbacGroup') }"
@@ -106,7 +106,7 @@
                 Groups
             </router-link>
             <router-link
-                v-if="user.hasAccessToSettings()"
+                v-if="user && user.hasAccessToSettings()"
                 to="/rbac/roles"
                 class="flex items-center ml-2 mr-3 px-3 py-2 mb-2 text-base rounded text-gray-300 hover:bg-white hover:bg-opacity-30"
                 :class="{ 'bg-black bg-opacity-30': $route.name?.startsWith('rbacRole') }"
@@ -160,13 +160,13 @@
 
             <!-- Invisible Administration Section Header for height consistency -->
             <div
-                v-if="user.hasAccessToSettings()"
+                v-if="user && user.hasAccessToSettings()"
                 class="py-3 text-base font-semibold text-gray-300 mt-4 opacity-0 pointer-events-none"
             >
                 Administration
             </div>
             <router-link
-                v-if="user.hasAccessToSettings()"
+                v-if="user && user.hasAccessToSettings()"
                 to="/rbac/users"
                 class="flex items-center justify-center w-10 h-10 mb-2 rounded text-gray-300 hover:bg-white hover:bg-opacity-30"
                 :class="{ 'bg-black bg-opacity-30': $route.name === 'rbacUsers' }"
@@ -175,7 +175,7 @@
                 <i class="pi pi-users text-lg"></i>
             </router-link>
             <router-link
-                v-if="user.hasAccessToSettings()"
+                v-if="user && user.hasAccessToSettings()"
                 to="/rbac/groups"
                 class="flex items-center justify-center w-10 h-10 mb-2 rounded text-gray-300 hover:bg-white hover:bg-opacity-30"
                 :class="{ 'bg-black bg-opacity-30': $route.name?.startsWith('rbacGroup') }"
@@ -184,7 +184,7 @@
                 <i class="pi pi-user-plus text-lg"></i>
             </router-link>
             <router-link
-                v-if="user.hasAccessToSettings()"
+                v-if="user && user.hasAccessToSettings()"
                 to="/rbac/roles"
                 class="flex items-center justify-center w-10 h-10 mb-2 rounded text-gray-300 hover:bg-white hover:bg-opacity-30"
                 :class="{ 'bg-black bg-opacity-30': $route.name?.startsWith('rbacRole') }"
@@ -239,7 +239,7 @@
         </div>
 
         <!-- User Info -->
-        <div v-if="!collapsed">
+        <div v-if="!collapsed && user">
             <div class="p-4">
                 <div
                     v-if="user.avatarUrl"
@@ -324,7 +324,7 @@
                 :title="isDark ? 'Switch to Light' : 'Switch to Dark'"
                 style="border-color: var(--p-primary-500); color: rgb(209 213 219)"
             ></Button>
-            <div class="rounded p-1 -m-1" :class="{ 'bg-black bg-opacity-30': $route.name === 'userProfile' }">
+            <div class="rounded p-1 -m-1" :class="{ 'bg-black bg-opacity-30': $route.name === 'userProfile' }" v-if="user">
                 <Avatar
                     :image="user.avatarUrl"
                     :icon="user.avatarUrl ? null : 'pi pi-user'"

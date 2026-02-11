@@ -67,6 +67,8 @@ MIDDLEWARE.extend(
 
 CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = CONFIG["django"].get("CSRF_TRUSTED_ORIGINS", [])
+# Allow local development frontend
+CSRF_TRUSTED_ORIGINS.extend(["http://localhost:8080", "http://127.0.0.1:8080"])
 
 # Apply base URL configuration
 if BASE_URL:

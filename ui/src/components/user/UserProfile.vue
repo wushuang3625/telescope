@@ -204,7 +204,9 @@ const handleDeleteTokens = async () => {
     }
 }
 
-const handleLogout = () => {
-    window.location.href = '/logout'
+const handleLogout = async () => {
+    const authStore = useAuthStore()
+    await authStore.logout()
+    router.push('/login')
 }
 </script>

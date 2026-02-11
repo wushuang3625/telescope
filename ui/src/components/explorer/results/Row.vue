@@ -64,10 +64,8 @@
                             <Column field="value" header="VALUE" sortable>
                                 <template #body="slotProps">
                                     <span v-if="slotProps.data.value">
-                                        <pre
-                                            style="white-space: pre-wrap; word-wrap: break-all; word-break: break-all"
-                                            >{{ slotProps.data.value }}</pre
-                                        ></span
+                                        <JsonViewer :value="slotProps.data.value" />
+                                    </span
                                     ><span v-else>&ndash;</span>
                                 </template>
                             </Column>
@@ -75,9 +73,7 @@
                     </TabPanel>
                     <TabPanel value="1">
                         <div class="p-4">
-                            <pre style="white-space: pre-wrap; word-wrap: break-all; word-break: break-all">{{
-                                row
-                            }}</pre>
+                            <pre style="white-space: pre-wrap; word-wrap: break-all; word-break: break-all" v-html="getHighlightedValue(row)"></pre>
                         </div>
                     </TabPanel>
                 </TabPanels>
@@ -98,12 +94,15 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import { Operator as FlyQLOperator } from 'flyql'
 import { useSourceControlsStore } from '@/stores/sourceControls'
+import { useHighlight } from '@/composables/useHighlight.js'
+import JsonViewer from '@/components/explorer/results/JsonViewer.vue'
 
 import { getColor, getContrastColor } from '@/utils/colors.js'
 import Tag from 'primevue/tag'
 import { DateTime } from 'luxon'
 
 const sourceControlsStore = useSourceControlsStore()
+const { getHighlightedValue } = useHighlight()
 
 const props = defineProps(['source', 'row', 'timeZone'])
 

@@ -33,7 +33,7 @@ const isDark = useDark()
 const editorFocused = ref(false)
 
 const editorHeight = computed(() => {
-    const lines = (code.value.match(/\n/g) || '').length + 1
+    const lines = ((code.value || '').match(/\n/g) || '').length + 1
     return 24 + lines * 20
 })
 
@@ -45,7 +45,7 @@ const theme = computed(() => {
     }
 })
 
-const code = ref(props.value)
+const code = ref(props.value || '')
 const editorRef = shallowRef()
 
 const handleMount = (editor) => {
@@ -79,6 +79,6 @@ const onChange = () => {
 }
 
 watch(props, () => {
-    code.value = props.value
+    code.value = props.value || ''
 })
 </script>

@@ -100,6 +100,11 @@ const routes = [
         component: () => import('@/components/rbac/Groups.vue'),
     },
     {
+        path: '/login',
+        name: 'login',
+        component: () => import('@/views/auth/LoginView.vue'),
+    },
+    {
         path: '/rbac/users',
         name: 'rbacUsers',
         component: () => import('@/components/rbac/Users.vue'),
@@ -116,11 +121,19 @@ const router = createRouter({
     routes,
 })
 
-router.beforeEach(async (to, from) => {
-    const { isLoggedIn } = storeToRefs(useAuthStore())
+router.beforeEach(async (to, from, next) => {
+    const authStore = useAuthStore()
 
-    if (!isLoggedIn.value && to.name !== 'login') {
-        window.location = 'login'
+    if (authStore.isLoggedIn === undefined) {
+        await authStore.login()
+    }
+
+    if (!authStore.isLoggedIn && to.name !== 'login') {
+        next({ name: 'login' })
+    } else if (authStore.isLoggedIn && to.name === 'login') {
+        next({ name: 'root' })
+    } else {
+        next()
     }
 })
 

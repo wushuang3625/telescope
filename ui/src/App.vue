@@ -1,7 +1,11 @@
 <template>
     <Toast class="break-all" position="top-center" />
     <div class="flex flex-row w-full h-full overflow-hidden">
-        <Sidebar :collapsed="sidebarCollapsed" @toggle-collapse="sidebarCollapsed = !sidebarCollapsed" />
+        <Sidebar
+            v-if="route.name !== 'login'"
+            :collapsed="sidebarCollapsed"
+            @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
+        />
         <div class="flex flex-col flex-1 h-full min-w-0">
             <div class="overflow-auto">
                 <router-view />
@@ -12,9 +16,12 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { Toast } from 'primevue'
 import Sidebar from '@/components/common/Sidebar.vue'
+
+const route = useRoute()
 
 const getStoredCollapsedState = () => {
     const stored = localStorage.getItem('sidebarCollapsed')

@@ -1,8 +1,9 @@
-from django.contrib.auth import views, logout
+from django.contrib.auth import views, logout, authenticate, login
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views import View
@@ -24,6 +25,30 @@ from telescope.auth.forms import LoginForm, SuperuserForm
 from telescope.rbac.manager import RBACManager
 
 rbac_manager = RBACManager()
+
+
+
+class APILoginView(APIView):
+    @method_decorator(csrf_exempt)
+    @method_decorator(ensure_csrf_cookie)
+    def post(self, request):
+        response = UIResponse()
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        if not username or not password:
+            response.mark_failed("Username and password are required")
+            return Response(response.as_dict(), status=400)
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            response.data = {"username": user.username}
+            return Response(response.as_dict())
+        else:
+            response.mark_failed("Invalid credentials")
+            return Response(response.as_dict(), status=401)
 
 
 class LoginView(views.LoginView):
