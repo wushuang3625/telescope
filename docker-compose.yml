@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  telescope:
+    build: .
+    container_name: telescope
+    ports:
+      - "9898:9898"
+    environment:
+      - TELESCOPE_CONFIG_FILE=/config.yaml
+    volumes:
+      - ./dev/config.yaml:/config.yaml
+      - ./dev/db.sqlite3:/db.sqlite3
+    restart: unless-stopped

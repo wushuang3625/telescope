@@ -7,3 +7,5 @@ backend/telescope/templates/index.html
 .idea
 sqlite3
 dev
+config.yml
+build.sh
