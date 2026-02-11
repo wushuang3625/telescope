@@ -17,6 +17,13 @@ if settings.CONFIG["auth"]["providers"]["okta"]["enabled"]:
 
     oauth_patterns.extend(okta_patterns)
 
+if settings.CONFIG["auth"]["providers"]["feishu"]["enabled"]:
+    from allauth.socialaccount.providers.feishu.urls import (
+        urlpatterns as feishu_patterns,
+    )
+
+    oauth_patterns.extend(feishu_patterns)
+
 urlpatterns = [
     path(
         "favicon.ico",

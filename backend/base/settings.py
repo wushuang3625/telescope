@@ -45,6 +45,9 @@ if CONFIG["auth"]["providers"]["github"]["enabled"]:
 if CONFIG["auth"]["providers"]["okta"]["enabled"]:
     INSTALLED_APPS.append("allauth.socialaccount.providers.okta")
 
+if CONFIG["auth"]["providers"]["feishu"]["enabled"]:
+    INSTALLED_APPS.append("allauth.socialaccount.providers.feishu")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -192,6 +195,15 @@ if CONFIG["auth"]["providers"]["okta"]["enabled"]:
         okta_config["OAUTH_PKCE_ENABLED"] = True
 
     SOCIALACCOUNT_PROVIDERS["okta"] = okta_config
+
+if CONFIG["auth"]["providers"]["feishu"]["enabled"]:
+    feishu_config = {
+        "APP": {
+            "client_id": CONFIG["auth"]["providers"]["feishu"]["app_id"],
+            "secret": CONFIG["auth"]["providers"]["feishu"]["app_secret"],
+        },
+    }
+    SOCIALACCOUNT_PROVIDERS["feishu"] = feishu_config
 
 if CONFIG["django"].get("SECURE_PROXY_SSL_HEADER"):
     header_config = CONFIG["django"]["SECURE_PROXY_SSL_HEADER"]

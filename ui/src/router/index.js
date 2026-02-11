@@ -110,6 +110,11 @@ const routes = [
         component: () => import('@/components/rbac/Users.vue'),
     },
     {
+        path: '/rbac/users/new',
+        name: 'rbacUserNew',
+        component: () => import('@/components/rbac/UserNew.vue'),
+    },
+    {
         path: '/rbac/roles',
         name: 'rbacRoles',
         component: () => import('@/components/rbac/Roles.vue'),

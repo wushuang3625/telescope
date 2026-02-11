@@ -117,11 +117,11 @@ def validate(config, schema):
     if not errors:
         if config["auth"]["force_auth_provider"]:
             provider = config["auth"]["force_auth_provider"]
-            if provider not in ["github", "okta"]:
+            if provider not in ["github", "okta", "feishu"]:
                 errors.append(
                     (
                         "auth.force_auth_provider",
-                        "must be either 'github' or 'okta'",
+                        "must be either 'github', 'okta' or 'feishu'",
                     )
                 )
             elif not config["auth"]["providers"].get(provider, {}).get("enabled"):
@@ -198,6 +198,12 @@ def get_default_config():
                     "scope": "openid profile email",
                     "pkce_enabled": True,
                 },
+                "feishu": {
+                    "enabled": False,
+                    "app_id": "",
+                    "app_secret": "",
+                    "default_group": None,
+                },
             },
             "force_auth_provider": None,
             "local_login_secret_path": None,
@@ -227,7 +233,9 @@ def get_default_config():
 
 def get_config():
     config_file = os.environ.get("TELESCOPE_CONFIG_FILE")
+
     config = {}
+
     default_config = get_default_config()
 
     if config_file:

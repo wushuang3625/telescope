@@ -259,6 +259,7 @@
                         </div>
                         <div class="text-xs text-gray-400 flex items-center">
                             <i v-if="user.type == 'github'" class="pi pi-github mr-1"></i>
+                            <i v-if="user.type == 'feishu'" class="pi pi-send mr-1"></i>
                             {{ user.type }}
                         </div>
                     </div>
@@ -277,6 +278,7 @@
                         </div>
                         <div class="text-xs text-gray-400 flex items-center">
                             <i v-if="user.type == 'github'" class="pi pi-github mr-1"></i>
+                            <i v-if="user.type == 'feishu'" class="pi pi-send mr-1"></i>
                             {{ user.type }}
                         </div>
                     </div>

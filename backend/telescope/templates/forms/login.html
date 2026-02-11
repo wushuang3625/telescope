@@ -27,7 +27,7 @@
         </div>
         <input class="btn-submit"  type="submit" value="Submit">
       </form>
-      {% if github_enabled or okta_enabled %}
+      {% if github_enabled or okta_enabled or feishu_enabled %}
       <div style="display: flex; justify-content: center; align-items:center; margin-top: 10px;">or sign in with</div>
       {% endif %}
       {% if github_enabled %}
@@ -42,6 +42,12 @@
         <input id="okta_submit" class="btn-thirdparty" type="submit" value="Okta">
       </form>
       {% endif %}
+      {% if feishu_enabled %}
+      <form action="login/feishu/login/" method="post">
+        {% csrf_token %}
+        <input id="feishu_submit" class="btn-thirdparty" type="submit" value="Feishu">
+      </form>
+      {% endif %}
     </div>
   </div>
 </div>
@@ -52,6 +58,10 @@ document.getElementById("github_submit").click()
 {% elif force_auth_provider == 'okta' %}
 <script>
 document.getElementById("okta_submit").click()
+</script>
+{% elif force_auth_provider == 'feishu' %}
+<script>
+document.getElementById("feishu_submit").click()
 </script>
 {% endif %}
 {% endblock %}

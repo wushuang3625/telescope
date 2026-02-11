@@ -71,3 +71,31 @@ class UpdateGroupSerializer(serializers.Serializer):
     class Meta:
         model = Group
         fields = ["name"]
+
+
+class NewUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ["username", "password", "first_name", "last_name", "email"]
+
+    def create(self, validated_data):
+        """
+        Create a new user with a hashed password.
+        """
+        user = User.objects.create_user(**validated_data)
+        return user
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        """
+        Check that the two passwords match.
+        """
+        if data["password"] != data["password_confirm"]:
+            raise serializers.ValidationError("Passwords do not match")
+        return data

@@ -65,3 +65,17 @@ def add_okta_user_to_default_group(request, user, **kwargs):
     if user.socialaccount_set.filter(provider="okta").exists():
         default_group, created = Group.objects.get_or_create(name=default_group_name)
         user.groups.add(default_group)
+
+
+@receiver([user_logged_in])
+@transaction.atomic
+def add_feishu_user_to_default_group(request, user, **kwargs):
+    default_group_name = settings.CONFIG["auth"]["providers"]["feishu"].get(
+        "default_group"
+    )
+    if not default_group_name:
+        return
+
+    if user.socialaccount_set.filter(provider="feishu").exists():
+        default_group, created = Group.objects.get_or_create(name=default_group_name)
+        user.groups.add(default_group)

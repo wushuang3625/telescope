@@ -21,6 +21,8 @@ from telescope.serializers.rbac import (
     GroupSerializer,
     NewGroupSerializer,
     UpdateGroupSerializer,
+    NewUserSerializer,
+    ResetPasswordSerializer,
 )
 
 rbac_manager = RBACManager()
@@ -246,11 +248,83 @@ class UserView(APIView):
             if pk is None:
                 users = User.objects.prefetch_related("groups").all()
                 serializer = UserSerializer(users, many=True)
+            else:
+                user = User.objects.prefetch_related("groups").get(pk=pk)
+                serializer = UserSerializer(user)
         except Exception as err:
-            response.mark_failed(f"failed to remove users from group: {err}")
+            response.mark_failed(f"failed to get users: {err}")
         else:
-            response.add_msg("Users has been removed from group")
-        response.data = serializer.data
+            response.data = serializer.data
+        return Response(response.as_dict())
+
+    @method_decorator(login_required)
+    @method_decorator(
+        global_permission_required([permissions.Global.MANAGE_RBAC.value])
+    )
+    def post(self, request):
+        """
+        Create a new user.
+        """
+        response = UIResponse()
+        try:
+            serializer = NewUserSerializer(data=request.data)
+            if not serializer.is_valid():
+                response.validation["result"] = False
+                response.validation["columns"] = serializer.errors
+            else:
+                user = serializer.save()
+                response.data = {"id": user.pk}
+                response.add_msg(f"User {user.username} has been created")
+        except Exception as err:
+            response.mark_failed(f"failed to create user: {err}")
+        return Response(response.as_dict())
+
+    @method_decorator(login_required)
+    @method_decorator(
+        global_permission_required([permissions.Global.MANAGE_RBAC.value])
+    )
+    def patch(self, request, pk):
+        """
+        Update user (reset password).
+        """
+        response = UIResponse()
+        try:
+            user = User.objects.get(pk=pk)
+            serializer = ResetPasswordSerializer(data=request.data)
+            if not serializer.is_valid():
+                response.validation["result"] = False
+                response.validation["columns"] = serializer.errors
+            else:
+                user.set_password(serializer.validated_data["password"])
+                user.save()
+                response.add_msg(f"Password for user {user.username} has been reset")
+        except User.DoesNotExist:
+            response.mark_failed(f"User with id {pk} does not exist")
+        except Exception as err:
+            response.mark_failed(f"failed to reset password: {err}")
+        return Response(response.as_dict())
+
+    @method_decorator(login_required)
+    @method_decorator(
+        global_permission_required([permissions.Global.MANAGE_RBAC.value])
+    )
+    def delete(self, request, pk):
+        """
+        Delete a user.
+        """
+        response = UIResponse()
+        try:
+            user = User.objects.get(pk=pk)
+            if user.is_superuser and User.objects.filter(is_superuser=True).count() <= 1:
+                response.mark_failed("Cannot delete the last superuser")
+            else:
+                username = user.username
+                user.delete()
+                response.add_msg(f"User {username} has been deleted")
+        except User.DoesNotExist:
+            response.mark_failed(f"User with id {pk} does not exist")
+        except Exception as err:
+            response.mark_failed(f"failed to delete user: {err}")
         return Response(response.as_dict())
 
 

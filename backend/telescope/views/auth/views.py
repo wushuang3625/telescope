@@ -59,6 +59,7 @@ class LoginView(views.LoginView):
         "base_url": settings.BASE_URL or "",
         "github_enabled": settings.CONFIG["auth"]["providers"]["github"]["enabled"],
         "okta_enabled": settings.CONFIG["auth"]["providers"]["okta"]["enabled"],
+        "feishu_enabled": settings.CONFIG["auth"]["providers"]["feishu"]["enabled"],
         "force_auth_provider": settings.CONFIG["auth"]["force_auth_provider"],
     }
 
@@ -84,6 +85,9 @@ class LocalLoginView(views.LoginView):
                     "enabled"
                 ],
                 "okta_enabled": settings.CONFIG["auth"]["providers"]["okta"]["enabled"],
+                "feishu_enabled": settings.CONFIG["auth"]["providers"]["feishu"][
+                    "enabled"
+                ],
                 "force_auth_provider": None,
             }
         )
@@ -187,6 +191,9 @@ class WhoAmIView(APIView):
                     "preferred_username", user_data.get("email", request.user.username)
                 )
                 data["avatar_url"] = user_data.get("picture", "")
+            elif social_account.provider == "feishu":
+                data["username"] = user_data.get("name", request.user.username)
+                data["avatar_url"] = user_data.get("avatar_url", "")
         serializer = WhoAmISerializer(data=data)
         if not serializer.is_valid():
             response.mark_failed(str(serializer.errors))
